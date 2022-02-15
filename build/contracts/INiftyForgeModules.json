@@ -1,0 +1,55 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "INiftyForgeModules",
+  "sourceName": "contracts/NiftyForge/INiftyForgeModules.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "enum INFModuleWithEvents.Events",
+          "name": "eventType",
+          "type": "uint8"
+        }
+      ],
+      "name": "addEventListener",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "listModules",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "list",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "status",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum INFModuleWithEvents.Events",
+          "name": "eventType",
+          "type": "uint8"
+        }
+      ],
+      "name": "removeEventListener",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

@@ -1,0 +1,40 @@
+{
+	"name": "@0xdievardump/niftyforge",
+	"description": "Package to import and use the contracts of NiftyForge.io",
+	"version": "0.1.1",
+	"files": [
+		"build/**/*",
+		"contracts/**/*",
+		"deploy/**/*",
+		"deployments/**/*",
+		"!contracts/mocks/**/*"
+	],
+	"scripts": {
+		"test": "echo \"No test specified\""
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/niftyforge/contracts.git"
+	},
+	"keywords": [
+		"solidity",
+		"ethereum",
+		"smart",
+		"contracts",
+		"security",
+		"niftyforge"
+	],
+	"author": "dievardump (Simon Fremaux) <dievardump@gmail.com>",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/niftyforge/contracts/issues"
+	},
+	"homepage": "https://niftyforge.io",
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@openzeppelin/contracts": "^4.3.2",
+		"@openzeppelin/contracts-upgradeable": "^4.3.2"
+	}
+}
