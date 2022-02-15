@@ -2,24 +2,37 @@
 
 A very easy way to launch your own contracts with few efforts, lots of goodies.
 
+Deploy using the minimal proxy pattern, making deployments of a full NFT contract for around 0.025 eth at 50gwei.
 
-
+## Full loaded contracts:
 
 - Roles Management
-- Module Pattern (delegate tokenURI / royaltyInfo and other stuff to the minter module)
+- Module Pattern very advances: delegates tokenURI, royaltyInfo and other stuff to the module that minted a token
 - Permits (EIP 4494 - draft)
 - On chain Royalties (EIP 2981)
 - mint / mintBatch with consecutive or arbitrary ids
 - Events Listeners sent to modules for specific behaviors on Mint/Burn/Transfer
 
-# install
+# Install
+
+pnpm
+
 ```bash
-npm add @0xdievardump/niftyforge
+pnpm add @0xdievardump/niftyforge
+```
+
+npm
+
+```bash
+npm install @0xdievardump/niftyforge
 ```
 
 # Two types of contracts
 
-Full or Slim depending on your needs and use
+Full or Slim depending on your needs and use:
+
+-  Slim will be more series / pfp-like minting in a consecutive order
+-  Full will give lots of flexibility while still being easy to use)
 
 # hardhat-deploy
 
