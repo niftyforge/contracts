@@ -26,12 +26,35 @@ Full or Slim depending on your needs and use
 Easily load the current deployments in your hardhat config and deploy new contracts using hardhat-deploy
 
 ```js
-	external: {
+external: {
     deployments: {
       mainnet: ['node_modules/@0xdievardump/niftyforge/deployments/mainnet'],
       rinkeby: ['node_modules/@0xdievardump/niftyforge/deployments/rinkeby']
     }
   }
+```
+
+then in your scripts
+
+
+```js
+  // scripts/deployERC721.js
+  const forgeMaster = await ethers.getContract('ForgeMaster');
+  const tx = await forgeMaster.createERC721(
+      "My NFT Contract", // name
+      "MNC", // ticker
+      'ipfs://QmYxUtFnPFntZsrxRTCT3rJZUWC7ti949f1hxnnfnzNB2u', // contract URI
+      'https://mybaseuri.com/',  // baseURI
+      ethers.constants.AddressZero, // owner
+      [], // modules
+      ethers.constants.AddressZero, // royaltiesRecipient
+      0, // royalties amount 0-10000 (2 decimals)
+      'my-nft-contract', // slug on niftyforge.io
+      '' // context, blank if you don't know what is context ;)
+  );
+
+  const receipt = await tx.wait();
+  console.log(receipt.logs);
 ```
 
 # Module Pattern
@@ -56,11 +79,11 @@ contract MyModuleWithSomeMonsterNFT is
     INFModuleTokenURI,
     INFModuleWithRoyalties
 {
-		/// @notice the nftContract on which MyModule will Mint
-		address public nftContract;
+    /// @notice the nftContract on which MyModule will Mint
+    address public nftContract;
 
-		/// @notice the baseURI for this module
-		string public baseURI;
+    /// @notice the baseURI for this module
+    string public baseURI;
 
     function supportsInterface(bytes4 interfaceId)
         public
@@ -73,16 +96,6 @@ contract MyModuleWithSomeMonsterNFT is
             interfaceId == type(INFModuleTokenURI).interfaceId ||
             interfaceId == type(INFModuleWithRoyalties).interfaceId ||
             super.supportsInterface(interfaceId);
-    }
-
-    /// @inheritdoc	INFModuleWithRoyalties
-    function royaltyInfo(uint256 tokenId)
-        public
-        view
-        override
-        returns (address, uint256)
-    {
-        return royaltyInfo(msg.sender, tokenId);
     }
 
     /// @inheritdoc	INFModuleWithRoyalties
@@ -99,31 +112,21 @@ contract MyModuleWithSomeMonsterNFT is
     }
 
     /// @inheritdoc	INFModuleTokenURI
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        returns (string memory)
-    {
-        return tokenURI(msg.sender, tokenId);
-    }
-
-    /// @inheritdoc	INFModuleTokenURI
     function tokenURI(address, uint256 tokenId)
         public
         view
         override
         returns (string memory)
     {
-			// manage your own tokenURI.
-			return string(abi.encodePacked(baseURI, tokenId.toString(), '.json'));
-		}
+        // manage your own tokenURI.
+        return string(abi.encodePacked(baseURI, tokenId.toString(), '.json'));
+    }
 
-		function mint() {
-			// mint the next nft to msg.sender
-			// there is no URI because it's managed in this contract
-			// there are no royaltiesRecipient nor royaltieSamount because it's manage in this contract
-			INiftyForge721(nftContract).mint(msg.sender, '', address(0), 0, address(0));
-		}
+    function mint() {
+        // mint the next nft to msg.sender
+        // there is no URI because it's managed in this contract
+        // there are no royaltiesRecipient nor royaltieSamount because it's manage in this contract
+        INiftyForge721(nftContract).mint(msg.sender, '', address(0), 0, address(0));
+    }
 }
 ```
