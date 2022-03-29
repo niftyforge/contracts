@@ -10,7 +10,6 @@
 		"!contracts/mocks/**/*"
 	],
 	"scripts": {
-		"prepare": "bash ../scripts/package/prepare.sh",
 		"test": "echo \"No test specified\""
 	},
 	"repository": {
