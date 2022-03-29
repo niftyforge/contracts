@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
   "contractName": "ERC721WithRoles",
-  "sourceName": "contracts/NFT/ERC721Helpers/ERC721WithRoles.sol",
+  "sourceName": "contracts/NFT/ERC721/ERC721WithRoles.sol",
   "abi": [
     {
       "anonymous": false,

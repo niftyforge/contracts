@@ -6,9 +6,9 @@ import '@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import '../Modules/INFModule.sol';
 import '../Modules/INFModuleWithEvents.sol';
 
-import './INiftyForgeModules.sol';
+import './INiftyForgeWithModules.sol';
 
-/// @title NiftyForgeBase
+/// @title NiftyForgeWithModules
 /// @author Simon Fremaux (@dievardump)
 /// @notice These modules can be attached to a contract and enabled/disabled later
 ///         They can be used to mint elements (need Minter Role) but also can listen
@@ -18,7 +18,7 @@ import './INiftyForgeModules.sol';
 ///         Remember cross contract calls have a high cost, and reads too.
 ///         Do not abuse of Events and only use them if there is a high value to it
 ///         Gas is not cheap, always think of users first.
-contract NiftyForgeModules is INiftyForgeModules {
+contract NiftyForgeWithModules is INiftyForgeWithModules {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     // event emitted whenever a module status changed

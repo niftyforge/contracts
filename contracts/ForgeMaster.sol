@@ -5,9 +5,12 @@ import '@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import '@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
 
+import './IForgeMaster.sol';
+
 import './ForgeMaster/ForgeMasterStorage.sol';
 
-import './NiftyForge721.sol';
+import './INiftyForge721.sol';
+import './INiftyForge721Slim.sol';
 
 /// @title ForgeMaster
 /// @author Simon Fremaux (@dievardump)
@@ -15,7 +18,7 @@ import './NiftyForge721.sol';
 ///         modules, Permits, on-chain Royalties, for pretty cheap.
 ///         Those contract & nfts are all referenced in the same Subgraph that can be used to create
 ///         a small, customizable, Storefront for anyone that wishes to.
-contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
+contract ForgeMaster is IForgeMaster, OwnableUpgradeable, ForgeMasterStorage {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     // emitted when a registry is created
@@ -49,21 +52,10 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
         string reason
     );
 
-    function initialize(
-        bool locked,
-        uint256 fee_,
-        uint256 freeCreations_,
-        address erc721Implementation,
-        address erc1155Implementation,
-        address owner_
-    ) external initializer {
+    function initialize(bool locked, address owner_) external initializer {
         __Ownable_init();
 
         _locked = locked;
-        _fee = fee_;
-        _freeCreations = freeCreations_;
-        _setERC721Implementation(erc721Implementation);
-        _setERC1155Implementation(erc1155Implementation);
 
         if (owner_ != address(0)) {
             transferOwnership(owner_);
@@ -74,16 +66,6 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
     /// @return if the contract is locked for new creations or not
     function isLocked() external view returns (bool) {
         return _locked;
-    }
-
-    /// @notice Helper to know the fee to create a contract
-    function fee() external view returns (uint256) {
-        return _fee;
-    }
-
-    /// @notice Helper to know how many free creations are leftthe number of free creations to set
-    function freeCreations() external view returns (uint256) {
-        return _freeCreations;
     }
 
     /// @notice Getter for the ERC721 Implementation
@@ -178,7 +160,7 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
     /// @param name_ name of the contract (see ERC721)
     /// @param symbol_ symbol of the contract (see ERC721)
     /// @param contractURI_ The contract URI (containing its metadata) - can be empty ""
-    /// @param enableOpenSeaProxy if OpenSeaProxy gas-less trading should be enabled
+    /// @param baseURI_ The contract base URI (where to find the NFTs) - can be empty ""
     /// @param owner_ Address to whom transfer ownership
     /// @param modulesInit array of ModuleInit
     /// @param contractRoyaltiesRecipient the recipient, if the contract has "contract wide royalties"
@@ -188,41 +170,84 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
         string memory name_,
         string memory symbol_,
         string memory contractURI_,
-        bool enableOpenSeaProxy,
+        string memory baseURI_,
         address owner_,
-        NiftyForge721.ModuleInit[] memory modulesInit,
+        INiftyForge721.ModuleInit[] memory modulesInit,
         address contractRoyaltiesRecipient,
         uint256 contractRoyaltiesValue,
         string memory slug,
         string memory context
-    ) external payable returns (address newContract) {
+    ) external returns (address newContract) {
         require(_erc721Implementation != address(0), '!NO_721_IMPLEMENTATION!');
 
         // verify not locked or not owner
         require(_locked == false || msg.sender == owner(), '!LOCKED!');
 
-        // if not freeCreations
-        if (_freeCreations == 0) {
-            require(
-                // verify value or is owner
-                msg.value == _fee || msg.sender == owner(),
-                '!WRONG_VALUE!'
-            );
-        } else {
-            _freeCreations--;
-        }
-
         // create minimal proxy to _erc721Implementation
         newContract = ClonesUpgradeable.clone(_erc721Implementation);
 
         // initialize the non upgradeable proxy
-        NiftyForge721(payable(newContract)).initialize(
+        INiftyForge721(payable(newContract)).initialize(
             name_,
             symbol_,
             contractURI_,
-            enableOpenSeaProxy ? _openseaERC721ProxyRegistry : address(0),
+            baseURI_,
             owner_ != address(0) ? owner_ : msg.sender,
             modulesInit,
+            contractRoyaltiesRecipient,
+            contractRoyaltiesValue
+        );
+
+        // add the new contract to the registry
+        _addRegistry(newContract, context);
+
+        if (bytes(slug).length > 0) {
+            setSlug(slug, newContract);
+        }
+    }
+
+    /// @notice Creates a new NiftyForge721Slim
+    /// @dev the contract created is a minimal proxy to the _erc721SlimImplementation
+    /// @param name_ name of the contract (see ERC721)
+    /// @param symbol_ symbol of the contract (see ERC721)
+    /// @param contractURI_ The contract URI (containing its metadata) - can be empty ""
+    /// @param baseURI_ The contract base URI (where to find the NFTs) - can be empty ""
+    /// @param owner_ Address to whom transfer ownership
+    /// @param minter The address that has the right to mint on the collection (see INiftyForge721Slim)
+    /// @param contractRoyaltiesRecipient the recipient, if the contract has "contract wide royalties"
+    /// @param contractRoyaltiesValue the value, modules to add / enable directly at creation
+    /// @return newContract the address of the new contract
+    function createERC721Slim(
+        string memory name_,
+        string memory symbol_,
+        string memory contractURI_,
+        string memory baseURI_,
+        address owner_,
+        address minter,
+        address contractRoyaltiesRecipient,
+        uint256 contractRoyaltiesValue,
+        string memory slug,
+        string memory context
+    ) external returns (address newContract) {
+        require(
+            _erc721SlimImplementation != address(0),
+            '!NO_721SLIM_IMPLEMENTATION!'
+        );
+
+        // verify not locked or not owner
+        require(_locked == false || msg.sender == owner(), '!LOCKED!');
+
+        // create minimal proxy to _erc721SlimImplementation
+        newContract = ClonesUpgradeable.clone(_erc721SlimImplementation);
+
+        // initialize the non upgradeable proxy
+        INiftyForge721Slim(newContract).initialize(
+            name_,
+            symbol_,
+            contractURI_,
+            baseURI_,
+            owner_ != address(0) ? owner_ : msg.sender,
+            minter,
             contractRoyaltiesRecipient,
             contractRoyaltiesValue
         );
@@ -261,7 +286,7 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
             );
 
             require(
-                NiftyForge721(payable(registry)).canEdit(msg.sender),
+                INiftyForge721(payable(registry)).canEdit(msg.sender),
                 '!NOT_EDITOR!'
             );
             lastIndexing[registry] = block.timestamp;
@@ -311,7 +336,7 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
         // tokens when they are flagged are not shown on the
         require(
             msg.sender == owner() ||
-                NiftyForge721(payable(registry)).canEdit(msg.sender),
+                INiftyForge721(payable(registry)).canEdit(msg.sender),
             '!NOT_EDITOR!'
         );
 
@@ -326,22 +351,19 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
         _locked = locked;
     }
 
-    /// @notice Helper for owner to set the fee to create a registry
-    /// @param fee_ the fee to create
-    function setFee(uint256 fee_) external onlyOwner {
-        _fee = fee_;
-    }
-
-    /// @notice Helper for owner to set the number of free creations
-    /// @param howMany the number of free creations to set
-    function setFreeCreations(uint256 howMany) external onlyOwner {
-        _freeCreations = howMany;
-    }
-
     /// @notice Setter for the ERC721 Implementation
     /// @param implementation the address to proxy calls to
     function setERC721Implementation(address implementation) public onlyOwner {
         _setERC721Implementation(implementation);
+    }
+
+    /// @notice Setter for the ERC721Slim Implementation
+    /// @param implementation the address to proxy calls to
+    function setERC721SlimImplementation(address implementation)
+        public
+        onlyOwner
+    {
+        _setERC721SlimImplementation(implementation);
     }
 
     /// @notice Setter for the ERC1155 Implementation
@@ -394,7 +416,7 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
 
         // verifies that the sender is a collection Editor or Owner
         require(
-            NiftyForge721(payable(registry)).canEdit(msg.sender),
+            INiftyForge721(payable(registry)).canEdit(msg.sender),
             '!NOT_EDITOR!'
         );
 
@@ -420,6 +442,12 @@ contract ForgeMaster is OwnableUpgradeable, ForgeMasterStorage {
     /// @param implementation the address to proxy calls to
     function _setERC721Implementation(address implementation) internal {
         _erc721Implementation = implementation;
+    }
+
+    /// @dev internal setter for the ERC721Slim Implementation
+    /// @param implementation the address to proxy calls to
+    function _setERC721SlimImplementation(address implementation) internal {
+        _erc721SlimImplementation = implementation;
     }
 
     /// @dev internal setter for the ERC1155 Implementation

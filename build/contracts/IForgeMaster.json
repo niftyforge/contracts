@@ -34,9 +34,9 @@
           "type": "string"
         },
         {
-          "internalType": "bool",
-          "name": "enableOpenSeaProxy",
-          "type": "bool"
+          "internalType": "string",
+          "name": "baseURI_",
+          "type": "string"
         },
         {
           "internalType": "address",
@@ -94,20 +94,71 @@
           "type": "address"
         }
       ],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "fee",
-      "outputs": [
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name_",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "symbol_",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "contractURI_",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "baseURI_",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "owner_",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "minter",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "contractRoyaltiesRecipient",
+          "type": "address"
+        },
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "contractRoyaltiesValue",
           "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "slug",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "context",
+          "type": "string"
         }
       ],
-      "stateMutability": "view",
+      "name": "createERC721Slim",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "newContract",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -167,19 +218,6 @@
       "name": "forceReindexing",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "freeCreations",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -407,32 +445,6 @@
         }
       ],
       "name": "setERC721ProxyRegistry",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "fee_",
-          "type": "uint256"
-        }
-      ],
-      "name": "setFee",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "howMany",
-          "type": "uint256"
-        }
-      ],
-      "name": "setFreeCreations",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

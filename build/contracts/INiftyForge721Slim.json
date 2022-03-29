@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
-  "contractName": "INiftyForge721",
-  "sourceName": "contracts/INiftyForge721.sol",
+  "contractName": "INiftyForge721Slim",
+  "sourceName": "contracts/INiftyForge721Slim.sol",
   "abi": [
     {
       "anonymous": false,
@@ -81,32 +81,6 @@
     {
       "inputs": [
         {
-          "internalType": "address[]",
-          "name": "users",
-          "type": "address[]"
-        }
-      ],
-      "name": "addEditors",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address[]",
-          "name": "users",
-          "type": "address[]"
-        }
-      ],
-      "name": "addMinters",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "address",
           "name": "to",
           "type": "address"
@@ -118,29 +92,6 @@
         }
       ],
       "name": "approve",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "module",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "enabled",
-          "type": "bool"
-        },
-        {
-          "internalType": "bool",
-          "name": "canModuleMint",
-          "type": "bool"
-        }
-      ],
-      "name": "attachModule",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -197,25 +148,6 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "canMint",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [],
       "name": "contractURI",
       "outputs": [
@@ -226,42 +158,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "module",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "keepListeners",
-          "type": "bool"
-        }
-      ],
-      "name": "disableModule",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "module",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "canModuleMint",
-          "type": "bool"
-        }
-      ],
-      "name": "enableModule",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -373,26 +269,9 @@
           "type": "address"
         },
         {
-          "components": [
-            {
-              "internalType": "address",
-              "name": "module",
-              "type": "address"
-            },
-            {
-              "internalType": "bool",
-              "name": "enabled",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "minter",
-              "type": "bool"
-            }
-          ],
-          "internalType": "struct INiftyForge721.ModuleInit[]",
-          "name": "modulesInit_",
-          "type": "tuple[]"
+          "internalType": "address",
+          "name": "minter_",
+          "type": "address"
         },
         {
           "internalType": "address",
@@ -435,51 +314,13 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "isEditor",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "isMinter",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [],
-      "name": "isMintingOpenToAll",
+      "name": "maxSupply",
       "outputs": [
         {
-          "internalType": "bool",
+          "internalType": "uint256",
           "name": "",
-          "type": "bool"
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -491,45 +332,6 @@
           "internalType": "address",
           "name": "to",
           "type": "address"
-        },
-        {
-          "internalType": "string",
-          "name": "uri",
-          "type": "string"
-        },
-        {
-          "internalType": "address",
-          "name": "feeRecipient",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "feeAmount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "transferTo",
-          "type": "address"
-        }
-      ],
-      "name": "mint",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
         }
       ],
       "name": "mint",
@@ -575,63 +377,9 @@
           "type": "address"
         },
         {
-          "internalType": "string",
-          "name": "uri",
-          "type": "string"
-        },
-        {
           "internalType": "uint256",
-          "name": "tokenId_",
+          "name": "count",
           "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "feeRecipient",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "feeAmount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "transferTo",
-          "type": "address"
-        }
-      ],
-      "name": "mint",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address[]",
-          "name": "to",
-          "type": "address[]"
-        },
-        {
-          "internalType": "string[]",
-          "name": "uris",
-          "type": "string[]"
-        },
-        {
-          "internalType": "address[]",
-          "name": "feeRecipients",
-          "type": "address[]"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "feeAmounts",
-          "type": "uint256[]"
         }
       ],
       "name": "mintBatch",
@@ -651,52 +399,26 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address[]",
-          "name": "to",
-          "type": "address[]"
-        },
-        {
-          "internalType": "string[]",
-          "name": "uris",
-          "type": "string[]"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "tokenIds",
-          "type": "uint256[]"
-        },
-        {
-          "internalType": "address[]",
-          "name": "feeRecipients",
-          "type": "address[]"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "feeAmounts",
-          "type": "uint256[]"
-        }
-      ],
-      "name": "mintBatch",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
+      "inputs": [],
+      "name": "minted",
+      "outputs": [
         {
           "internalType": "uint256",
-          "name": "tokenId",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "mutableURI",
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "minter",
       "outputs": [
         {
-          "internalType": "string",
+          "internalType": "address",
           "name": "",
-          "type": "string"
+          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -716,51 +438,6 @@
           "internalType": "address",
           "name": "owner",
           "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address[]",
-          "name": "users",
-          "type": "address[]"
-        }
-      ],
-      "name": "removeEditors",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address[]",
-          "name": "users",
-          "type": "address[]"
-        }
-      ],
-      "name": "removeMinters",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
-      "name": "renderTokenURI",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
         }
       ],
       "stateMutability": "view",
@@ -906,19 +583,6 @@
       "inputs": [
         {
           "internalType": "string",
-          "name": "baseMutableURI_",
-          "type": "string"
-        }
-      ],
-      "name": "setBaseMutableURI",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "string",
           "name": "baseURI_",
           "type": "string"
         }
@@ -950,75 +614,6 @@
         }
       ],
       "name": "setDefaultRoyaltiesRecipient",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "maxSupply_",
-          "type": "uint256"
-        }
-      ],
-      "name": "setMaxSupply",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bool",
-          "name": "isOpen",
-          "type": "bool"
-        }
-      ],
-      "name": "setMintingOpenToAll",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "string",
-          "name": "mutableURI_",
-          "type": "string"
-        }
-      ],
-      "name": "setMutableURI",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "recipient",
-          "type": "address"
-        }
-      ],
-      "name": "setTokenRoyaltiesRecipient",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "startAtZero",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

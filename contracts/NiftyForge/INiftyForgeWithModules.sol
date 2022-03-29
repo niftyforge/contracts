@@ -3,9 +3,9 @@ pragma solidity ^0.8.9;
 
 import '../Modules/INFModuleWithEvents.sol';
 
-/// @title INiftyForgeBase
+/// @title INiftyForgeWithModules
 /// @author Simon Fremaux (@dievardump)
-interface INiftyForgeModules {
+interface INiftyForgeWithModules {
     enum ModuleStatus {
         UNKNOWN,
         ENABLED,

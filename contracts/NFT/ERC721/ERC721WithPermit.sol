@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import '@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 
 /// @title ERC721WithPermit
 /// @author Simon Fremaux (@dievardump)
@@ -22,33 +22,46 @@ import '@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.
 abstract contract ERC721WithPermit is ERC721Upgradeable {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256(
-            'Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)'
+            "Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)"
         );
 
-    bytes32 public DOMAIN_SEPARATOR;
+    bytes32 private _deploymentDomainSeparator;
+    uint256 private _deploymentChainId;
 
     mapping(uint256 => uint256) private _nonces;
 
     // function to initialize the contract
-    function __ERC721WithPermit_init(string memory name_) internal {
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256(
-                    'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'
-                ),
-                keccak256(bytes(name_)),
-                keccak256(bytes('1')),
-                block.chainid,
-                address(this)
-            )
-        );
+    function __ERC721WithPermit_init() internal {
+        uint256 chainId;
+        //solhint-disable-next-line no-inline-assembly
+        assembly {
+            chainId := chainid()
+        }
+
+        _deploymentChainId = chainId;
+        _deploymentDomainSeparator = _calculateDomainSeparator(chainId);
+    }
+
+    /// @dev Return the DOMAIN_SEPARATOR.
+    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+        uint256 chainId;
+        //solhint-disable-next-line no-inline-assembly
+        assembly {
+            chainId := chainid()
+        }
+
+        // in case a fork happen, to support the chain that had to change its chainId,, we compute the domain operator
+        return
+            chainId == _deploymentChainId
+                ? _deploymentDomainSeparator
+                : _calculateDomainSeparator(chainId);
     }
 
     /// @notice Allows to retrieve current nonce for token
     /// @param tokenId token id
     /// @return current nonce
     function nonce(uint256 tokenId) public view returns (uint256) {
-        require(_exists(tokenId), '!UNKNOWN_TOKEN!');
+        require(_exists(tokenId), "!UNKNOWN_TOKEN!");
         return _nonces[tokenId];
     }
 
@@ -67,7 +80,7 @@ abstract contract ERC721WithPermit is ERC721Upgradeable {
     ) public view returns (bytes32) {
         return
             ECDSAUpgradeable.toTypedDataHash(
-                DOMAIN_SEPARATOR,
+                DOMAIN_SEPARATOR(),
                 keccak256(
                     abi.encode(
                         PERMIT_TYPEHASH,
@@ -92,7 +105,7 @@ abstract contract ERC721WithPermit is ERC721Upgradeable {
         uint256 deadline,
         bytes memory signature
     ) public {
-        require(deadline >= block.timestamp, '!PERMIT_DEADLINE_EXPIRED!');
+        require(deadline >= block.timestamp, "!PERMIT_DEADLINE_EXPIRED!");
 
         // this will revert if token is burned
         address owner_ = ownerOf(tokenId);
@@ -121,10 +134,31 @@ abstract contract ERC721WithPermit is ERC721Upgradeable {
                     digest,
                     signature
                 ),
-            '!INVALID_PERMIT_SIGNATURE!'
+            "!INVALID_PERMIT_SIGNATURE!"
         );
 
         _approve(spender, tokenId);
+    }
+
+    /// @dev returns the domain separator for `chainId`
+    /// @param chainId the chain id
+    function _calculateDomainSeparator(uint256 chainId)
+        internal
+        view
+        returns (bytes32)
+    {
+        return
+            keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    ),
+                    keccak256(bytes(name())),
+                    keccak256(bytes("1")),
+                    chainId,
+                    address(this)
+                )
+            );
     }
 
     /// @dev helper to easily increment a nonce for a given tokenId
@@ -140,7 +174,6 @@ abstract contract ERC721WithPermit is ERC721Upgradeable {
         address to,
         uint256 tokenId
     ) internal virtual override {
-        super._transfer(from, to, tokenId);
         // increment the permit nonce linked to this tokenId.
         // this will ensure that a Permit can not be used on a token
         // if it were to leave the owner's hands and come back later
@@ -148,5 +181,7 @@ abstract contract ERC721WithPermit is ERC721Upgradeable {
         if (from != address(0)) {
             _incrementNonce(tokenId);
         }
+
+        super._transfer(from, to, tokenId);
     }
 }

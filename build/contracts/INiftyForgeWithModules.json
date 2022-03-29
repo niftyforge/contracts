@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
-  "contractName": "INiftyForgeModules",
-  "sourceName": "contracts/NiftyForge/INiftyForgeModules.sol",
+  "contractName": "INiftyForgeWithModules",
+  "sourceName": "contracts/NiftyForge/INiftyForgeWithModules.sol",
   "abi": [
     {
       "inputs": [

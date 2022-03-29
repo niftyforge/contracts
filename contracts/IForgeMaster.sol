@@ -11,12 +11,6 @@ interface IForgeMaster {
     /// @return if the contract is locked for new creations or not
     function isLocked() external view returns (bool);
 
-    /// @notice Helper to know the fee to create a contract
-    function fee() external view returns (uint256);
-
-    /// @notice Helper to know how many free creations are leftthe number of free creations to set
-    function freeCreations() external view returns (uint256);
-
     /// @notice Getter for the ERC721 Implementation
     function getERC721Implementation() external view returns (address);
 
@@ -68,7 +62,7 @@ interface IForgeMaster {
     /// @param name_ name of the contract (see ERC721)
     /// @param symbol_ symbol of the contract (see ERC721)
     /// @param contractURI_ The contract URI (containing its metadata) - can be empty ""
-    /// @param enableOpenSeaProxy if OpenSeaProxy gas-less trading should be enabled
+    /// @param baseURI_ The contract base URI (where to find the NFTs) - can be empty ""
     /// @param owner_ Address to whom transfer ownership
     /// @param modulesInit array of ModuleInit
     /// @param contractRoyaltiesRecipient the recipient, if the contract has "contract wide royalties"
@@ -78,14 +72,38 @@ interface IForgeMaster {
         string memory name_,
         string memory symbol_,
         string memory contractURI_,
-        bool enableOpenSeaProxy,
+        string memory baseURI_,
         address owner_,
         INiftyForge721.ModuleInit[] memory modulesInit,
         address contractRoyaltiesRecipient,
         uint256 contractRoyaltiesValue,
         string memory slug,
         string memory context
-    ) external payable returns (address newContract);
+    ) external returns (address newContract);
+
+    /// @notice Creates a new NiftyForge721Slim
+    /// @dev the contract created is a minimal proxy to the _erc721SlimImplementation
+    /// @param name_ name of the contract (see ERC721)
+    /// @param symbol_ symbol of the contract (see ERC721)
+    /// @param contractURI_ The contract URI (containing its metadata) - can be empty ""
+    /// @param baseURI_ The contract base URI (where to find the NFTs) - can be empty ""
+    /// @param owner_ Address to whom transfer ownership
+    /// @param minter Address that  will be minting on the registry; Usually a module.
+    /// @param contractRoyaltiesRecipient the recipient, if the contract has "contract wide royalties"
+    /// @param contractRoyaltiesValue the value, modules to add / enable directly at creation
+    /// @return newContract the address of the new contract
+    function createERC721Slim(
+        string memory name_,
+        string memory symbol_,
+        string memory contractURI_,
+        string memory baseURI_,
+        address owner_,
+        address minter,
+        address contractRoyaltiesRecipient,
+        uint256 contractRoyaltiesValue,
+        string memory slug,
+        string memory context
+    ) external returns (address newContract);
 
     /// @notice Method allowing an editor to ask for reindexing on a regisytry
     ///         (for example if baseURI changes)
@@ -119,14 +137,6 @@ interface IForgeMaster {
     /// @notice Setter for owner to stop the registries creation or not
     /// @param locked the new state
     function setLocked(bool locked) external;
-
-    /// @notice Helper for owner to set the fee to create a registry
-    /// @param fee_ the fee to create
-    function setFee(uint256 fee_) external;
-
-    /// @notice Helper for owner to set the number of free creations
-    /// @param howMany the number of free creations to set
-    function setFreeCreations(uint256 howMany) external;
 
     /// @notice Setter for the ERC721 Implementation
     /// @param implementation the address to proxy calls to

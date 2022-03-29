@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
   "contractName": "ERC721Full",
-  "sourceName": "contracts/NFT/ERC721Helpers/ERC721Full.sol",
+  "sourceName": "contracts/NFT/ERC721Full.sol",
   "abi": [
     {
       "anonymous": false,
@@ -306,7 +306,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "user",
+          "name": "account",
           "type": "address"
         }
       ],
@@ -325,7 +325,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "user",
+          "name": "account",
           "type": "address"
         }
       ],
@@ -475,7 +475,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "owner_",
+          "name": "owner",
           "type": "address"
         },
         {
@@ -499,7 +499,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "user",
+          "name": "account",
           "type": "address"
         }
       ],
@@ -518,35 +518,11 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "user",
+          "name": "account",
           "type": "address"
         }
       ],
       "name": "isMinter",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "operator",
-          "type": "address"
-        }
-      ],
-      "name": "isOwnersOpenSeaProxy",
       "outputs": [
         {
           "internalType": "bool",
@@ -738,19 +714,6 @@
       "name": "permit",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "proxyRegistry",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -988,19 +951,6 @@
         }
       ],
       "name": "setMutableURI",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "osProxyRegistry",
-          "type": "address"
-        }
-      ],
-      "name": "setOpenSeaRegistry",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

@@ -1,16 +1,19 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import '@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import './ERC721Ownable.sol';
-import './ERC721WithRoles.sol';
-import './ERC721WithRoyalties.sol';
-import './ERC721WithPermit.sol';
-import './ERC721WithMutableURI.sol';
+import "./ERC721/ERC721WithRoles.sol";
+import "./ERC721/ERC721WithRoyalties.sol";
+import "./ERC721/ERC721WithPermit.sol";
+import "./ERC721/ERC721WithMutableURI.sol";
+
+import "./ERC721/IERC4494.sol";
 
 /// @title ERC721Full
 /// @dev This contains all the different overrides needed on
@@ -22,7 +25,8 @@ import './ERC721WithMutableURI.sol';
 ///      which can verify ownership at the processing time
 /// @author Simon Fremaux (@dievardump)
 abstract contract ERC721Full is
-    ERC721Ownable,
+    OwnableUpgradeable,
+    ERC721Upgradeable,
     ERC721BurnableUpgradeable,
     ERC721URIStorageUpgradeable,
     ERC721WithRoles,
@@ -30,22 +34,26 @@ abstract contract ERC721Full is
     ERC721WithPermit,
     ERC721WithMutableURI
 {
-    bytes32 public constant ROLE_EDITOR = keccak256('EDITOR');
-    bytes32 public constant ROLE_MINTER = keccak256('MINTER');
+    bytes32 public constant ROLE_EDITOR = keccak256("EDITOR");
+    bytes32 public constant ROLE_MINTER = keccak256("MINTER");
+
+    event NewContractURI(string contractURI);
 
     // base token uri
     string public baseURI;
 
+    string public contractURI;
+
     /// @notice modifier allowing only safe listed addresses to mint
     ///         safeListed addresses have roles Minter, Editor or Owner
     modifier onlyMinter(address minter) virtual {
-        require(canMint(minter), '!NOT_MINTER!');
+        require(canMint(minter), "!NOT_MINTER!");
         _;
     }
 
     /// @notice only editor
-    modifier onlyEditor(address sender) virtual override {
-        require(canEdit(sender), '!NOT_EDITOR!');
+    modifier onlyEditor(address sender) virtual {
+        require(canEdit(sender), "!NOT_EDITOR!");
         _;
     }
 
@@ -53,24 +61,33 @@ abstract contract ERC721Full is
     /// @param name_ name of the contract (see ERC721)
     /// @param symbol_ symbol of the contract (see ERC721)
     /// @param contractURI_ The contract URI (containing its metadata) - can be empty ""
-    /// @param openseaProxyRegistry_ OpenSea's proxy registry to allow gas-less listings - can be address(0)
+    /// @param baseURI_ the contract baseURI (if there is)  - can be empty ""
     /// @param owner_ Address to whom transfer ownership (can be address(0), then owner is deployer)
     function __ERC721Full_init(
         string memory name_,
         string memory symbol_,
         string memory contractURI_,
-        address openseaProxyRegistry_,
+        string memory baseURI_,
         address owner_
     ) internal {
-        __ERC721Ownable_init(
-            name_,
-            symbol_,
-            contractURI_,
-            openseaProxyRegistry_,
-            owner_
-        );
+        __Ownable_init();
+        __ERC721_init_unchained(name_, symbol_);
 
-        __ERC721WithPermit_init(name_);
+        __ERC721WithPermit_init();
+
+        // set contract uri if present
+        if (bytes(contractURI_).length > 0) {
+            contractURI = contractURI_;
+        }
+
+        // set base uri if present
+        if (bytes(baseURI_).length > 0) {
+            baseURI = baseURI_;
+        }
+
+        if (address(0) != owner_) {
+            transferOwnership(owner_);
+        }
     }
 
     // receive() external payable {}
@@ -90,10 +107,10 @@ abstract contract ERC721Full is
         if (token == address(0)) {
             require(
                 amount == 0 || address(this).balance >= amount,
-                '!WRONG_VALUE!'
+                "!WRONG_VALUE!"
             );
-            (bool success, ) = msg.sender.call{value: amount}('');
-            require(success, '!TRANSFER_FAILED!');
+            (bool success, ) = msg.sender.call{value: amount}("");
+            require(success, "!TRANSFER_FAILED!");
         } else {
             // if token is ERC1155
             if (
@@ -106,7 +123,7 @@ abstract contract ERC721Full is
                     msg.sender,
                     tokenId,
                     amount,
-                    ''
+                    ""
                 );
             } else if (
                 IERC165Upgradeable(token).supportsInterface(
@@ -118,13 +135,13 @@ abstract contract ERC721Full is
                     address(this),
                     msg.sender,
                     tokenId,
-                    ''
+                    ""
                 );
             } else {
                 // we consider it's an ERC20
                 require(
                     IERC20Upgradeable(token).transfer(msg.sender, amount),
-                    '!TRANSFER_FAILED!'
+                    "!TRANSFER_FAILED!"
                 );
             }
         }
@@ -144,17 +161,8 @@ abstract contract ERC721Full is
             interfaceId == type(IERC2981Royalties).interfaceId ||
             interfaceId == type(IRaribleSecondarySales).interfaceId ||
             interfaceId == type(IFoundationSecondarySales).interfaceId ||
+            interfaceId == type(IERC4494).interfaceId ||
             super.supportsInterface(interfaceId);
-    }
-
-    /// @inheritdoc	ERC721Ownable
-    function isApprovedForAll(address owner_, address operator)
-        public
-        view
-        override(ERC721Upgradeable, ERC721Ownable)
-        returns (bool)
-    {
-        return super.isApprovedForAll(owner_, operator);
     }
 
     /// @inheritdoc	ERC721URIStorageUpgradeable
@@ -169,27 +177,27 @@ abstract contract ERC721Full is
     }
 
     /// @notice Helper to know if an address can do the action an Editor can
-    /// @param user the address to check
-    function canEdit(address user) public view virtual returns (bool) {
-        return isEditor(user) || owner() == user;
+    /// @param account the address to check
+    function canEdit(address account) public view virtual returns (bool) {
+        return isEditor(account) || owner() == account;
     }
 
-    /// @notice Helper to know if an address can do the action an Editor can
-    /// @param user the address to check
-    function canMint(address user) public view virtual returns (bool) {
-        return isMinter(user) || canEdit(user);
+    /// @notice Helper to know if an address can do the action a Minter can
+    /// @param account the address to check
+    function canMint(address account) public view virtual returns (bool) {
+        return isMinter(account) || canEdit(account);
     }
 
     /// @notice Helper to know if an address is editor
-    /// @param user the address to check
-    function isEditor(address user) public view returns (bool) {
-        return hasRole(ROLE_EDITOR, user);
+    /// @param account the address to check
+    function isEditor(address account) public view returns (bool) {
+        return hasRole(ROLE_EDITOR, account);
     }
 
     /// @notice Helper to know if an address is minter
-    /// @param user the address to check
-    function isMinter(address user) public view returns (bool) {
-        return hasRole(ROLE_MINTER, user);
+    /// @param account the address to check
+    function isMinter(address account) public view returns (bool) {
+        return hasRole(ROLE_MINTER, account);
     }
 
     /// @notice Allows to get approved using a permit and transfer in the same call
@@ -246,7 +254,7 @@ abstract contract ERC721Full is
         external
         onlyEditor(msg.sender)
     {
-        require(_exists(tokenId), '!UNKNOWN_TOKEN!');
+        require(_exists(tokenId), "!UNKNOWN_TOKEN!");
         _setMutableURI(tokenId, mutableURI_);
     }
 
@@ -296,7 +304,7 @@ abstract contract ERC721Full is
         external
         onlyEditor(msg.sender)
     {
-        require(!hasPerTokenRoyalties(), '!PER_TOKEN_ROYALTIES!');
+        require(!hasPerTokenRoyalties(), "!PER_TOKEN_ROYALTIES!");
         _setDefaultRoyaltiesRecipient(recipient);
     }
 
@@ -307,12 +315,22 @@ abstract contract ERC721Full is
     function setTokenRoyaltiesRecipient(uint256 tokenId, address recipient)
         external
     {
-        require(hasPerTokenRoyalties(), '!CONTRACT_WIDE_ROYALTIES!');
+        require(hasPerTokenRoyalties(), "!CONTRACT_WIDE_ROYALTIES!");
 
         (address currentRecipient, ) = _getTokenRoyalty(tokenId);
-        require(msg.sender == currentRecipient, '!NOT_ALLOWED!');
+        require(msg.sender == currentRecipient, "!NOT_ALLOWED!");
 
         _setTokenRoyaltiesRecipient(tokenId, recipient);
+    }
+
+    /// @notice Helper for the owner of the contract to set the new contract URI
+    /// @dev needs to be owner
+    /// @param contractURI_ new contract URI
+    function setContractURI(string memory contractURI_)
+        external
+        onlyEditor(msg.sender)
+    {
+        contractURI = contractURI_;
     }
 
     /// @inheritdoc ERC721Upgradeable
@@ -334,7 +352,7 @@ abstract contract ERC721Full is
         _removeRoyalty(tokenId);
 
         // remove mutableURI
-        _setMutableURI(tokenId, '');
+        _setMutableURI(tokenId, "");
 
         // burn ERC721URIStorage
         super._burn(tokenId);

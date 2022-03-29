@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import './NFT/ERC721Helpers/ERC721Full.sol';
+import './NFT/ERC721Full.sol';
 
 import './Modules/INFModuleWithEvents.sol';
 import './Modules/INFModuleTokenURI.sol';
@@ -9,35 +9,37 @@ import './Modules/INFModuleRenderTokenURI.sol';
 import './Modules/INFModuleWithRoyalties.sol';
 import './Modules/INFModuleMutableURI.sol';
 
-import './NiftyForge/NiftyForgeModules.sol';
+import './NiftyForge/NiftyForgeWithModules.sol';
 import './INiftyForge721.sol';
 
 /// @title NiftyForge721
 /// @author Simon Fremaux (@dievardump)
-contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
-    /// @dev This contains the last token id that was created
-    uint256 public lastTokenId;
+contract NiftyForge721 is NiftyForgeWithModules, ERC721Full {
+    error AlreadyMinted();
+    error OutOfJpegs();
+    error UnknownToken();
+    error AlreadySet();
 
-    uint256 public totalSupply;
+    uint256 internal _totalMinted;
+    uint256 internal _burned;
 
-    bool private _mintingOpenToAll;
+    /// @dev incremential token id counter
+    uint256 private _counter;
 
-    // this can be set only once by the owner of the contract
+    /// @notice offset used to start token id at 0 if needed
+    uint256 public offsetId;
+
+    bool public isMintingOpenToAll;
+
+    /// @notice maxSupply this can be set only once by the owner of the contract
     // this is used to ensure a max token creation that can be used
     // for example when people create a series of XX elements
     // since this contract works with "Minters", it is good to
     // be able to set in it that there is a max number of elements
     // and that this can not change
-    uint256 public maxTokenId;
+    uint256 public maxSupply;
 
     mapping(uint256 => address) public tokenIdToModule;
-
-    /// @notice modifier allowing only safe listed addresses to mint
-    ///         safeListed addresses have roles Minter, Editor or Owner
-    modifier onlyMinter(address minter) virtual override {
-        require(isMintingOpenToAll() || canMint(minter), '!NOT_MINTER!');
-        _;
-    }
 
     /// @notice this is the constructor of the contract, called at the time of creation
     ///         Although it uses what are called upgradeable contracts, this is only to
@@ -46,7 +48,7 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     /// @param name_ name of the contract (see ERC721)
     /// @param symbol_ symbol of the contract (see ERC721)
     /// @param contractURI_ The contract URI (containing its metadata) - can be empty ""
-    /// @param openseaProxyRegistry_ OpenSea's proxy registry to allow gas-less listings - can be address(0)
+    /// @param baseURI_ the contract baseURI (if there is)  - can be empty ""
     /// @param owner_ Address to whom transfer ownership
     /// @param modulesInit_ modules to add / enable directly at creation
     /// @param contractRoyaltiesRecipient the recipient, if the contract has "contract wide royalties"
@@ -55,19 +57,13 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         string memory name_,
         string memory symbol_,
         string memory contractURI_,
-        address openseaProxyRegistry_,
+        string memory baseURI_,
         address owner_,
-        ModuleInit[] memory modulesInit_,
+        INiftyForge721.ModuleInit[] memory modulesInit_,
         address contractRoyaltiesRecipient,
         uint256 contractRoyaltiesValue
     ) external initializer {
-        __ERC721Full_init(
-            name_,
-            symbol_,
-            contractURI_,
-            openseaProxyRegistry_,
-            owner_
-        );
+        __ERC721Full_init(name_, symbol_, contractURI_, baseURI_, address(0));
 
         for (uint256 i; i < modulesInit_.length; i++) {
             _attachModule(modulesInit_[i].module, modulesInit_[i].enabled);
@@ -89,11 +85,36 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
                 contractRoyaltiesValue
             );
         }
+
+        // transfer owner only after attaching modules
+        if (owner_ != address(0)) {
+            transferOwnership(owner_);
+        }
     }
 
-    /// @notice helper to know if everyone can mint or only minters
-    function isMintingOpenToAll() public view override returns (bool) {
-        return _mintingOpenToAll;
+    ////////////////////////////////////////////////////////////
+    // Getters                                                //
+    ////////////////////////////////////////////////////////////
+
+    /// @notice getter for the version of the implementation
+    /// @return the current implementation version following the scheme 0x[erc][type][version]
+    /// erc: 00 => ERC721 | 01 => ERC1155
+    /// type: 00 => full | 01 => slim
+    /// version: 00, 01, 02, 03...
+    function version() external view returns (bytes3) {
+        return hex'000001';
+    }
+
+    /// @notice Since this contract can only mint in sequence, we can keep track of totalSupply easily
+    /// @return the current total supply
+    function totalSupply() external view returns (uint256) {
+        return _totalMinted - _burned;
+    }
+
+    /// @notice Helper to know if an address can do the action a Minter can
+    /// @param user the address to check
+    function canMint(address user) public view virtual override returns (bool) {
+        return super.canMint(user) || isMintingOpenToAll;
     }
 
     /// @notice returns a tokenURI
@@ -110,7 +131,9 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         override
         returns (string memory uri)
     {
-        require(_exists(tokenId), '!UNKNOWN_TOKEN!');
+        if (!_exists(tokenId)) {
+            revert UnknownToken();
+        }
 
         // first, try to get the URI from the module that might have created it
         (bool support, address module) = _moduleSupports(
@@ -119,7 +142,7 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         );
 
         if (support) {
-            uri = INFModuleTokenURI(module).tokenURI(tokenId);
+            uri = INFModuleTokenURI(module).tokenURI(address(this), tokenId);
         }
 
         // if uri not set, get it with the normal tokenURI
@@ -137,10 +160,11 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     function renderTokenURI(uint256 tokenId)
         public
         view
-        override
         returns (string memory uri)
     {
-        require(_exists(tokenId), '!UNKNOWN_TOKEN!');
+        if (!_exists(tokenId)) {
+            revert UnknownToken();
+        }
 
         // Try to get the URI from the module that might have created this token
         (bool support, address module) = _moduleSupports(
@@ -150,28 +174,6 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         if (support) {
             uri = INFModuleRenderTokenURI(module).renderTokenURI(tokenId);
         }
-    }
-
-    /// @notice Toggle minting open to all state
-    /// @param isOpen if the new state is open or not
-    function setMintingOpenToAll(bool isOpen)
-        external
-        override
-        onlyEditor(msg.sender)
-    {
-        _mintingOpenToAll = isOpen;
-    }
-
-    /// @notice allows owner to set maxTokenId
-    /// @dev be careful, this is a one time call function.
-    ///      When set, the maxTokenId can not be reverted nor changed
-    /// @param maxTokenId_ the max token id possible
-    function setMaxTokenId(uint256 maxTokenId_)
-        external
-        onlyEditor(msg.sender)
-    {
-        require(maxTokenId == 0, '!MAX_TOKEN_ALREADY_SET!');
-        maxTokenId = maxTokenId_;
     }
 
     /// @notice function that returns a string that can be used to add metadata on top of what is in tokenURI
@@ -187,7 +189,9 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         override
         returns (string memory uri)
     {
-        require(_exists(tokenId), '!UNKNOWN_TOKEN!');
+        if (!_exists(tokenId)) {
+            revert UnknownToken();
+        }
 
         // first, try to get the URI from the module that might have created it
         (bool support, address module) = _moduleSupports(
@@ -202,6 +206,53 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         if (bytes(uri).length == 0) {
             uri = super.mutableURI(tokenId);
         }
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Editors / Minters                                      //
+    ////////////////////////////////////////////////////////////
+
+    /// @notice Toggle minting open to all state
+    /// @param isOpen if the new state is open or not
+    function setMintingOpenToAll(bool isOpen) external onlyEditor(msg.sender) {
+        isMintingOpenToAll = isOpen;
+    }
+
+    /// @notice allows owner to set a maxSupply (be careful, this is a one time call function)
+    ///      When set, the max supply can not be reverted nor changed
+    /// @param maxSupply_ the max token id possible
+    function setMaxSupply(uint256 maxSupply_) external onlyEditor(msg.sender) {
+        if (maxSupply != 0) {
+            revert AlreadySet();
+        }
+        maxSupply = maxSupply_;
+    }
+
+    /// @notice Mint next token to `to`
+    /// @param to address of recipient
+    /// @return tokenId the tokenId
+    function mint(address to)
+        public
+        onlyMinter(msg.sender)
+        returns (uint256 tokenId)
+    {
+        tokenId = _counter + 1 - offsetId;
+        mint(to, '', tokenId, address(0), 0, address(0));
+        _counter++;
+    }
+
+    /// @notice Mint next token to `to` and then transfers to `transferTo`
+    /// @param to address of first recipient
+    /// @param transferTo address to transfer token to
+    /// @return tokenId the tokenId
+    function mint(address to, address transferTo)
+        public
+        onlyMinter(msg.sender)
+        returns (uint256 tokenId)
+    {
+        tokenId = _counter + 1 - offsetId;
+        mint(to, '', tokenId, address(0), 0, transferTo);
+        _counter++;
     }
 
     /// @notice Mint token to `to` with `uri`
@@ -220,16 +271,10 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         address feeRecipient,
         uint256 feeAmount,
         address transferTo
-    ) public override onlyMinter(msg.sender) returns (uint256 tokenId) {
-        tokenId = lastTokenId + 1;
-        lastTokenId = mint(
-            to,
-            uri,
-            tokenId,
-            feeRecipient,
-            feeAmount,
-            transferTo
-        );
+    ) public onlyMinter(msg.sender) returns (uint256 tokenId) {
+        tokenId = _counter + 1 - offsetId;
+        mint(to, uri, tokenId, feeRecipient, feeAmount, transferTo);
+        _counter++;
     }
 
     /// @notice Mint batch tokens to `to[i]` with `uri[i]`
@@ -238,18 +283,14 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     /// @param feeRecipients the recipients of royalties for each id
     /// @param feeAmounts the royalties amounts for each id. From 0 to 10000
     ///        where 10000 == 100.00%; 1000 == 10.00%; 250 == 2.50%
-    /// @return tokenIds the tokenIds
+    /// @return startId the first id
+    /// @return endId the last id
     function mintBatch(
         address[] memory to,
         string[] memory uris,
         address[] memory feeRecipients,
         uint256[] memory feeAmounts
-    )
-        public
-        override
-        onlyMinter(msg.sender)
-        returns (uint256[] memory tokenIds)
-    {
+    ) public onlyMinter(msg.sender) returns (uint256 startId, uint256 endId) {
         require(
             to.length == uris.length &&
                 to.length == feeRecipients.length &&
@@ -257,41 +298,41 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
             '!LENGTH_MISMATCH!'
         );
 
-        uint256 tokenId = lastTokenId;
+        uint256 offset = offsetId;
+        uint256 counter = _counter;
 
-        tokenIds = new uint256[](to.length);
-        // verify that we don't overflow
-        // done here instead of in _mint so we do one read
-        // instead of to.length
-        _verifyMaxTokenId(tokenId + to.length);
+        uint256 length = to.length;
+
+        startId = counter + 1 - offset;
+        endId = startId + length - 1;
+
+        // verify that we don't mint more than maxSupply
+        _verifyMaxSupply((_totalMinted += length));
 
         bool isModule = modulesStatus[msg.sender] == ModuleStatus.ENABLED;
-        for (uint256 i; i < to.length; i++) {
-            tokenId++;
+        for (uint256 i; i < length; i++) {
             _mint(
                 to[i],
                 uris[i],
-                tokenId,
+                startId + i,
                 feeRecipients[i],
                 feeAmounts[i],
                 isModule
             );
-            tokenIds[i] = tokenId;
         }
 
-        // setting lastTokenId after will ensure that any reEntrancy will fail
+        // setting _counter after will ensure that any reEntrancy will fail
         // to mint, because the minting will throw with a duplicate id
-        lastTokenId = tokenId;
+        _counter = counter + length;
     }
 
     /// @notice Mint `tokenId` to to` with `uri` and transfer to transferTo if not null
     ///         Because not all tokenIds have incremental ids
-    ///         be careful with this function, it does not increment lastTokenId
+    ///         be careful with this function, it does not increment _counter
     ///         and expects the minter to actually know what it is doing.
-    ///         this also means, this function does not verify maxTokenId
     /// @param to address of recipient
     /// @param uri token metadata uri
-    /// @param tokenId_ token id wanted
+    /// @param tokenId token id wanted
     /// @param feeRecipient the recipient of royalties
     /// @param feeAmount the royalties amount. From 0 to 10000
     ///        where 10000 == 100.00%; 1000 == 10.00%; 250 == 2.50%
@@ -302,37 +343,35 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     function mint(
         address to,
         string memory uri,
-        uint256 tokenId_,
+        uint256 tokenId,
         address feeRecipient,
         uint256 feeAmount,
         address transferTo
-    ) public override onlyMinter(msg.sender) returns (uint256) {
-        // minting will throw if the tokenId_ already exists
+    ) public onlyMinter(msg.sender) returns (uint256) {
+        // minting will throw if the tokenId already exists
 
-        // we also verify maxTokenId in this case
-        // because else it would allow owners to mint arbitrary tokens
-        // after setting the max
-        _verifyMaxTokenId(tokenId_);
+        // verify that we don't mint more than maxSupply
+        _verifyMaxSupply(++_totalMinted);
 
         _mint(
             to,
             uri,
-            tokenId_,
+            tokenId,
             feeRecipient,
             feeAmount,
             modulesStatus[msg.sender] == ModuleStatus.ENABLED
         );
 
         if (transferTo != address(0)) {
-            _transfer(to, transferTo, tokenId_);
+            _transfer(to, transferTo, tokenId);
         }
 
-        return tokenId_;
+        return tokenId;
     }
 
     /// @notice Mint batch tokens to `to[i]` with `uris[i]`
     ///         Because not all tokenIds have incremental ids
-    ///         be careful with this function, it does not increment lastTokenId
+    ///         be careful with this function, it does not increment _counter
     ///         and expects the minter to actually know what it's doing.
     ///         this also means, this function does not verify maxTokenId
     /// @param to array of address of recipients
@@ -341,42 +380,38 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     /// @param feeRecipients the recipients of royalties for each id
     /// @param feeAmounts the royalties amounts for each id. From 0 to 10000
     ///        where 10000 == 100.00%; 1000 == 10.00%; 250 == 2.50%
-    /// @return tokenIds the tokenIds
     function mintBatch(
         address[] memory to,
         string[] memory uris,
         uint256[] memory tokenIds,
         address[] memory feeRecipients,
         uint256[] memory feeAmounts
-    ) public override onlyMinter(msg.sender) returns (uint256[] memory) {
+    ) public onlyMinter(msg.sender) {
         // minting will throw if any tokenIds[i] already exists
 
+        // saves gas
+        uint256 length = to.length;
+
         require(
-            to.length == uris.length &&
-                to.length == tokenIds.length &&
-                to.length == feeRecipients.length &&
-                to.length == feeAmounts.length,
+            length == uris.length &&
+                length == tokenIds.length &&
+                length == feeRecipients.length &&
+                length == feeAmounts.length,
             '!LENGTH_MISMATCH!'
         );
 
         uint256 highestId;
-        for (uint256 i; i < tokenIds.length; i++) {
-            if (tokenIds[i] > highestId) {
-                highestId = tokenIds[i];
-            }
-        }
 
-        // we also verify maxTokenId in this case
+        // we also verify maxSupply in this case
         // because else it would allow owners to mint arbitrary tokens
         // after setting the max
-        _verifyMaxTokenId(highestId);
+        _verifyMaxSupply((_totalMinted += length));
 
         bool isModule = modulesStatus[msg.sender] == ModuleStatus.ENABLED;
-        for (uint256 i; i < to.length; i++) {
+        for (uint256 i; i < length; i++) {
             if (tokenIds[i] > highestId) {
                 highestId = tokenIds[i];
             }
-
             _mint(
                 to[i],
                 uris[i],
@@ -386,8 +421,6 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
                 isModule
             );
         }
-
-        return tokenIds;
     }
 
     /// @notice Attach a module
@@ -398,7 +431,7 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         address module,
         bool enabled,
         bool moduleCanMint
-    ) external override onlyEditor(msg.sender) {
+    ) external onlyEditor(msg.sender) {
         // give the minter role if enabled and moduleCanMint
         if (moduleCanMint && enabled) {
             _grantRole(ROLE_MINTER, module);
@@ -412,7 +445,6 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     /// @param moduleCanMint if the module has to be given the minter role
     function enableModule(address module, bool moduleCanMint)
         external
-        override
         onlyEditor(msg.sender)
     {
         // give the minter role if moduleCanMint
@@ -427,11 +459,20 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     /// @param module to disable
     function disableModule(address module, bool keepListeners)
         external
-        override
         onlyEditor(msg.sender)
     {
         _disableModule(module, keepListeners);
     }
+
+    /// @notice This function allows to offset minted in order to start ids at 0
+    function startAtZero() external onlyEditor(msg.sender) {
+        if (_totalMinted != 0) revert AlreadyMinted();
+        offsetId = 1;
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Internal                                               //
+    ////////////////////////////////////////////////////////////
 
     /// @dev Internal mint function
     /// @param to token recipient
@@ -471,8 +512,6 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     /// @inheritdoc ERC721Upgradeable
     function _mint(address to, uint256 tokenId) internal virtual override {
         super._mint(to, tokenId);
-        totalSupply++;
-
         _fireEvent(INFModuleWithEvents.Events.MINT, tokenId, address(0), to);
     }
 
@@ -497,7 +536,7 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
     function _burn(uint256 tokenId) internal virtual override {
         address owner_ = ownerOf(tokenId);
         super._burn(tokenId);
-        totalSupply--;
+        _burned++;
         _fireEvent(
             INFModuleWithEvents.Events.BURN,
             tokenId,
@@ -516,11 +555,13 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
         super._disableModule(module, keepListeners);
     }
 
-    /// @dev Verifies that we do not create more token ids than the max if set
-    /// @param tokenId the tokenId to verify
-    function _verifyMaxTokenId(uint256 tokenId) internal view {
-        uint256 maxTokenId_ = maxTokenId;
-        require(maxTokenId_ == 0 || tokenId <= maxTokenId_, '!MAX_TOKEN_ID!');
+    /// @dev Verifies that we do not create more token than the max supply
+    /// @param nextSupply the next supply
+    function _verifyMaxSupply(uint256 nextSupply) internal view {
+        uint256 maxSupply_ = maxSupply;
+        if (maxSupply_ != 0 && nextSupply > maxSupply_) {
+            revert OutOfJpegs();
+        }
     }
 
     /// @dev Gets token royalties taking modules into account
@@ -543,7 +584,7 @@ contract NiftyForge721 is INiftyForge721, NiftyForgeModules, ERC721Full {
             if (support) {
                 (royaltyRecipient, royaltyAmount) = INFModuleWithRoyalties(
                     module
-                ).royaltyInfo(tokenId);
+                ).royaltyInfo(address(this), tokenId);
             }
         }
     }

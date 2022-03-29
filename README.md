@@ -31,8 +31,8 @@ npm install @0xdievardump/niftyforge
 
 Full or Slim depending on your needs and use:
 
--  Slim will be more series / pfp-like minting in a consecutive order
--  Full will give lots of flexibility while still being easy to use)
+-  Slim will be more series / pfp-like minting in a consecutive order (only one minter)
+-  Full will give lots of flexibility while still being easy to use it in a simple way
 
 # hardhat-deploy
 

@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
   "contractName": "IERC721WithMutableURI",
-  "sourceName": "contracts/NFT/ERC721Helpers/IERC721WithMutableURI.sol",
+  "sourceName": "contracts/NFT/ERC721/IERC721WithMutableURI.sol",
   "abi": [
     {
       "inputs": [

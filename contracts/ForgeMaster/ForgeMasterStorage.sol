@@ -50,6 +50,8 @@ contract ForgeMasterStorage {
     // used to flag a token in a registry
     mapping(address => mapping(uint256 => bool)) internal _flaggedTokens;
 
+    address internal _erc721SlimImplementation;
+
     // gap
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }
